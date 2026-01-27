@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import tempfile
 import os
@@ -7,7 +7,14 @@ from resume_parser import (
     extract_text_from_pdf,
     extract_text_from_docx
 )
-from ats_scorer import calculate_ats_score
+from ats_scorer import (
+    calculate_ats_score,
+    analyze_resume_for_job
+)
+
+# -------------------------
+# App initialization
+# -------------------------
 
 app = FastAPI()
 
@@ -19,6 +26,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -------------------------
+# Routes
+# -------------------------
 
 @app.get("/")
 def root():
@@ -26,11 +36,15 @@ def root():
 
 
 @app.post("/upload-resume")
-async def upload_resume(file: UploadFile = File(...)):
+async def upload_resume(
+    file: UploadFile = File(...),
+    job_role: str | None = Form(None),
+    job_description: str | None = Form(None)
+):
     filename = file.filename.lower()
     file_bytes = await file.read()
 
-    # Extract text from resume
+    # Extract resume text
     if filename.endswith(".pdf"):
         text = extract_text_from_pdf(file_bytes)
 
@@ -48,14 +62,23 @@ async def upload_resume(file: UploadFile = File(...)):
             detail="Only PDF and DOCX files are supported"
         )
 
-    # ATS scoring
+    # General ATS score
     ats_result = calculate_ats_score(text)
+
+    # Job-specific analysis
+    job_result = analyze_resume_for_job(
+        resume_text=text,
+        job_description=job_description,
+        job_role=job_role
+    )
 
     return {
         "filename": file.filename,
-        "text_length": len(text),
         "ats_score": ats_result["ats_score"],
-        "matched_keywords": ats_result["matched_keywords"],
+        "job_fit_score": job_result["job_fit_score"],
+        "matched_skills": job_result["matched_skills"],
+        "missing_skills": job_result["missing_skills"],
         "missing_sections": ats_result["missing_sections"],
-        "feedback": ats_result["feedback"]
+        "feedback": ats_result["feedback"],
+        "suggestions": job_result["suggestions"]
     }
