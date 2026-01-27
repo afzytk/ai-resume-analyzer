@@ -7,6 +7,7 @@ from resume_parser import (
     extract_text_from_pdf,
     extract_text_from_docx
 )
+from ats_scorer import calculate_ats_score
 
 app = FastAPI()
 
@@ -29,6 +30,7 @@ async def upload_resume(file: UploadFile = File(...)):
     filename = file.filename.lower()
     file_bytes = await file.read()
 
+    # Extract text from resume
     if filename.endswith(".pdf"):
         text = extract_text_from_pdf(file_bytes)
 
@@ -46,8 +48,14 @@ async def upload_resume(file: UploadFile = File(...)):
             detail="Only PDF and DOCX files are supported"
         )
 
+    # ATS scoring
+    ats_result = calculate_ats_score(text)
+
     return {
         "filename": file.filename,
         "text_length": len(text),
-        "preview": text[:500]
+        "ats_score": ats_result["ats_score"],
+        "matched_keywords": ats_result["matched_keywords"],
+        "missing_sections": ats_result["missing_sections"],
+        "feedback": ats_result["feedback"]
     }
