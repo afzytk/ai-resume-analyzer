@@ -7,7 +7,7 @@ import ResumeUpload from "./components/ResumeUpload";
 import Result from "./components/Result";
 import Loading from "./components/Loading";
 
-import { analyzeResume } from "./services/api.js";
+import { analyzeResume } from "./services/api";
 
 function App() {
   const [result, setResult] = useState(null);
@@ -21,6 +21,7 @@ function App() {
       const data = await analyzeResume(file);
       setResult(data);
     } catch (error) {
+      console.error(error);
       alert("Failed to analyze resume");
     } finally {
       setLoading(false);
@@ -33,8 +34,10 @@ function App() {
 
       <Container>
         <ResumeUpload onAnalyze={handleAnalyze} />
+
         {loading && <Loading />}
-        <Result result={result} />
+
+        {result && <Result result={result} />}
       </Container>
 
       <Footer />
@@ -43,4 +46,3 @@ function App() {
 }
 
 export default App;
- 
